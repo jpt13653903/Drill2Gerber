@@ -21,6 +21,82 @@
 #include "main.h"
 //------------------------------------------------------------------------------
 
+void Pause(){
+ printf("\nPress Enter to continue\n");
+ getchar();
+}
+//------------------------------------------------------------------------------
+
+bool ReadLine(){
+ int c;
+ int j = 0;
+
+ c = fgetc(Input);
+ if(c == EOF) return false;
+
+ while(c != EOF){
+  if(c == '\n'){
+   Line[j] = 0;
+   return true;
+  }
+  if(c != '\r') Line[j++] = c;
+  c = fgetc(Input);
+ }
+ return true;
+}
+//------------------------------------------------------------------------------
+
+void ConvertLine(){
+ static bool Header = true;
+
+ int Tool;
+
+ if(Header){
+  switch(Line[0]){
+   case 'I': // INCH,00.0000 or INCH,LZ
+    if(Line[5] == 'L') fprintf(Output, "%%FSTAX24Y24*MOIN*%%\n");
+    else               fprintf(Output, "%%FSLAX24Y24*MOIN*%%\n");
+    break;
+
+   case 'T': // Define drill width
+    Tool = (Line[1]-'0')*10 + (Line[2]-'0');
+    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, Line+4);
+    break;
+
+   case '%':
+    Header = false;
+    fprintf(Output, "%%LPD*%%\nG01*\n");
+    break;
+
+   default:
+    break;
+  }
+ }else{
+  switch(Line[0]){
+   case 'T':
+    Tool = (Line[1]-'0')*10 + (Line[2]-'0');
+    if(Tool > 0) fprintf(Output, "D%02d*\n", Tool+10);
+    break;
+
+   case 'X':
+   case 'Y':
+    for(Tool = 0; Line[Tool]; Tool++){
+     if(Line[Tool] != '+') fprintf(Output, "%c", Line[Tool]);
+    }
+    fprintf(Output, "D03*\n");
+    break;
+
+   case 'M':
+    fprintf(Output, "M02*\n");
+    break;
+
+   default:
+    break;
+  }
+ }
+}
+//------------------------------------------------------------------------------
+
 int main(int argc, char** argv){
  if(argc < 2){
   printf(
@@ -44,13 +120,17 @@ int main(int argc, char** argv){
    "along with this program.  If not, see <http://www.gnu.org/licenses/>\n"
    "\n"
    "Usage: Drill2Gerber input_file\n"
+   "\n"
+   "Tested on PCAD and FreePCB drill files.\n"
   );
+  Pause();
   return 0;
  }
 
  Input = fopen(argv[1], "r");
  if(!Input){
   printf("Cannot open \"%s\" for reading\n", argv[1]);
+  Pause();
   return 1;
  }
 
@@ -69,12 +149,13 @@ int main(int argc, char** argv){
   printf("Cannot open \"%s\" for writing\n", OutputFile);
   fclose(Input);
   delete[] OutputFile;
+  Pause();
   return 2;
  }
 
- char* Line = new char[0x1000];
+ Line = new char[0x1000];
 
-
+ while(ReadLine()) ConvertLine();
 
  // Clean-up
  fclose(Input);
@@ -83,6 +164,9 @@ int main(int argc, char** argv){
  delete[] Line;
  delete[] OutputFile;
 
+ printf("Drill to Gerber conversion successful\n");
+
+ Pause();
  return 0;
 }
 //------------------------------------------------------------------------------
