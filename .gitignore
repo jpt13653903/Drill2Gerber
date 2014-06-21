@@ -1,0 +1,12 @@
+*.zip
+*.swp
+*.exe
+*.cscope_file_list
+
+*.txt
+!Wiki.txt
+!ReadMe.txt
+
+CodeBlocks/bin/*
+CodeBlocks/obj/*
+
