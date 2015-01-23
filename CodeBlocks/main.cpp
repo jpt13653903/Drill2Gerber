@@ -54,6 +54,7 @@ void ConvertLine(){
  if(Header){
   switch(Line[0]){
    case 'I': // INCH,00.0000 or INCH,LZ
+    if(Line[1] != 'N' || Line[2] != 'C' || Line[3] != 'H') break;
     if(Line[5] == 'L') fprintf(Output, "%%FSTAX24Y24*MOIN*%%\n");
     else               fprintf(Output, "%%FSLAX24Y24*MOIN*%%\n");
     break;
@@ -87,6 +88,7 @@ void ConvertLine(){
     break;
 
    case 'M':
+    if(Line[1] != '3' || Line[2] != '0') break;
     fprintf(Output, "M02*\n");
     break;
 
@@ -121,7 +123,7 @@ int main(int argc, char** argv){
    "\n"
    "Usage: Drill2Gerber input_file\n"
    "\n"
-   "Tested on PCAD and FreePCB drill files.\n"
+   "Tested on PCAD, FreePCB, Microchip and Mentor Graphics drill files.\n"
   );
   Pause();
   return 0;
@@ -166,7 +168,6 @@ int main(int argc, char** argv){
 
  printf("Drill to Gerber conversion successful\n");
 
- Pause();
  return 0;
 }
 //------------------------------------------------------------------------------
