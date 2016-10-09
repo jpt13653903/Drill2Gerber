@@ -29,6 +29,8 @@ FILE* Input;
 FILE* Output;
 
 char* Line;
+
+bool RecognisedFormat = false;
 //------------------------------------------------------------------------------
 
 #endif

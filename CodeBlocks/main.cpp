@@ -46,22 +46,59 @@ bool ReadLine(){
 }
 //------------------------------------------------------------------------------
 
+bool IsLine(const char* String){
+ int j;
+ for(j = 0; Line[0] && String[j]; j++){
+  if(Line[j] != String[j]) return false;
+ }
+ if(String[j]       ) return false; // Still characters left
+ if(Line  [j] >= ' ') return false; // Still printable characters left
+ return true;
+}
+//------------------------------------------------------------------------------
+
+int GetTool(int* ToolChars){
+ int j;
+ int Tool = 0;
+
+ for(j = 1; Line[j] >= '0' && Line[j] <= '9'; j++){
+  Tool = 10*Tool + Line[j] - '0';
+ }
+
+ *ToolChars = j-1;
+ return Tool;
+}
+//------------------------------------------------------------------------------
+
 void ConvertLine(){
  static bool Header = true;
 
  int Tool;
+ int ToolChars;
 
  if(Header){
   switch(Line[0]){
-   case 'I': // INCH,00.0000 or INCH,LZ
-    if(Line[1] != 'N' || Line[2] != 'C' || Line[3] != 'H') break;
-    if(Line[5] == 'L') fprintf(Output, "%%FSTAX24Y24*MOIN*%%\n");
-    else               fprintf(Output, "%%FSLAX24Y24*MOIN*%%\n");
+   case 'I':
+    if(IsLine("INCH,00.0000")){
+     RecognisedFormat = true;
+     fprintf(Output, "%%FSLAX24Y24*MOIN*%%\n");
+
+    }else if(IsLine("INCH,LZ")){
+     RecognisedFormat = true;
+     fprintf(Output, "%%FSTAX24Y24*MOIN*%%\n");
+    }
+    break;
+
+   case 'M':
+    if(IsLine("METRIC,TZ,000.000")){
+     RecognisedFormat = true;
+     fprintf(Output, "%%FSLAX33Y33*MOMM*%%\n");
+    }
     break;
 
    case 'T': // Define drill width
-    Tool = (Line[1]-'0')*10 + (Line[2]-'0');
-    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, Line+4);
+    Tool = GetTool(&ToolChars);
+    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, Line+ToolChars+2);
     break;
 
    case '%':
@@ -75,7 +112,7 @@ void ConvertLine(){
  }else{
   switch(Line[0]){
    case 'T':
-    Tool = (Line[1]-'0')*10 + (Line[2]-'0');
+    Tool = GetTool(&ToolChars);
     if(Tool > 0) fprintf(Output, "D%02d*\n", Tool+10);
     break;
 
@@ -88,8 +125,8 @@ void ConvertLine(){
     break;
 
    case 'M':
-    if(Line[1] != '3' || Line[2] != '0') break;
-    fprintf(Output, "M02*\n");
+    if     (IsLine("M48")) Header = true;
+    else if(IsLine("M30")) fprintf(Output, "M02*\n");
     break;
 
    default:
@@ -123,7 +160,12 @@ int main(int argc, char** argv){
    "\n"
    "Usage: Drill2Gerber input_file\n"
    "\n"
-   "Tested on PCAD, FreePCB, Microchip and Mentor Graphics drill files.\n"
+   "Tested on drill files from:\n"
+   "- PCAD\n"
+   "- FreePCB\n"
+   "- Microchip\n"
+   "- Mentor Graphics\n"
+   "- Autodesk Circuits\n"
   );
   Pause();
   return 0;
@@ -166,7 +208,17 @@ int main(int argc, char** argv){
  delete[] Line;
  delete[] OutputFile;
 
- printf("Drill to Gerber conversion successful\n");
+ if(!RecognisedFormat){
+  printf(
+   "Error: Unrecognised drill coordinate format\n"
+   "\n"
+   "Please post a comment, with an example drill file, on\n"
+   "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n"
+  );
+
+ }else{
+  printf("Drill to Gerber conversion successful\n");
+ }
 
  return 0;
 }
