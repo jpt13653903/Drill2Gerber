@@ -30,6 +30,9 @@ FILE* Output;
 
 char* Line;
 
+int  IntDigits        = 3;
+int  FractionDigits   = 3;
+bool LeadingZeros     = true;
 bool RecognisedFormat = false;
 //------------------------------------------------------------------------------
 

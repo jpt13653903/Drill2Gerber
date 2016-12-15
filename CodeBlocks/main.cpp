@@ -70,35 +70,130 @@ int GetTool(int* ToolChars){
 }
 //------------------------------------------------------------------------------
 
+/*
+The drill file format supports a maximum of 6 digits:
+
+https://web.archive.org/web/20071030075236/http://www.excellon.com/
+  manuals/program.htm                                                         */
+
+int ConvertCoord(int Index){
+ int  Value         = 0;
+ int  Digits        = 0;
+ int  PointPos      = 0;
+ bool ExplicitPoint = false;
+
+ int j;
+ for(j = Index; Line[j]; j++){
+  if(Line[j] >= '0' && Line[j] <= '9'){
+   Value = 10*Value + Line[j] - '0';
+   Digits  ++;
+   PointPos++;
+
+  }else if(Line[j] == '.'){
+   ExplicitPoint = true;
+   PointPos      = 0;
+
+  }else{
+   break;
+  }
+ }
+
+ // Get the real value (scaled with 10^FractionDigits)
+ if(ExplicitPoint){
+  while(PointPos < FractionDigits){
+   Value *= 10;
+   Digits  ++;
+   PointPos++;
+  }
+
+ // If leading zeros are specified, add the trailing ones
+ }else if(LeadingZeros){
+  while(Digits < (IntDigits + FractionDigits)){
+   Value *= 10;
+   Digits++;
+  }
+ }
+
+ // Output is always with trailing zeros
+ fprintf(Output, "%d", Value);
+
+ if(!j){ // Prevent infinite loop
+  printf("\nError while converting coordinate\n\n");
+  RecognisedFormat = false;
+  j++;
+ }
+ return j - Index;
+}
+//------------------------------------------------------------------------------
+
+void GetFormat(int Index){
+ IntDigits = 0;
+ while(Line[Index] == '0'){
+  Index++;
+  IntDigits++;
+ }
+
+ if(Line[Index] != '.') return;
+ Index++;
+
+ FractionDigits = 0;
+ while(Line[Index] == '0'){
+  Index++;
+  FractionDigits++;
+ }
+}
+//------------------------------------------------------------------------------
+
 void ConvertLine(){
  static bool Header = true;
 
+ int j;
  int Tool;
- int ToolChars;
+ int CharCount;
 
  if(Header){
   switch(Line[0]){
    case 'I':
-    if(IsLine("INCH,00.0000")){
+    if(Line[1] == 'N' && Line[2] == 'C' && Line[3] == 'H'){
+     IntDigits        = 2;
+     FractionDigits   = 4;
+     LeadingZeros     = true;
      RecognisedFormat = true;
-     fprintf(Output, "%%FSLAX24Y24*MOIN*%%\n");
 
-    }else if(IsLine("INCH,LZ")){
-     RecognisedFormat = true;
-     fprintf(Output, "%%FSTAX24Y24*MOIN*%%\n");
+     if     (Line[5] == 'T') LeadingZeros = false;
+     if     (Line[5] == '0') GetFormat(5);
+     else if(Line[8] == '0') GetFormat(8);
+
+     fprintf(Output,
+      "%%FSLAX%d%dY%d%d*MOIN*%%\n",
+      IntDigits, FractionDigits,
+      IntDigits, FractionDigits
+     );
     }
     break;
 
    case 'M':
-    if(IsLine("METRIC,TZ,000.000")){
+    if(Line[1] == 'E' && Line[2] == 'T' && Line[3] == 'R'){
+     IntDigits        = 3;
+     FractionDigits   = 3;
+     LeadingZeros     = true;
      RecognisedFormat = true;
-     fprintf(Output, "%%FSLAX33Y33*MOMM*%%\n");
+
+     if     (Line[ 7] == 'T') LeadingZeros = false;
+     if     (Line[ 7] == '0') GetFormat( 7);
+     else if(Line[10] == '0') GetFormat(10);
+
+     fprintf(Output,
+      "%%FSLAX%d%dY%d%d*MOMM*%%\n",
+      IntDigits, FractionDigits,
+      IntDigits, FractionDigits
+     );
     }
     break;
 
    case 'T': // Define drill width
-    Tool = GetTool(&ToolChars);
-    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, Line+ToolChars+2);
+    Tool = GetTool(&CharCount);
+    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, Line+CharCount+2);
     break;
 
    case '%':
@@ -112,14 +207,21 @@ void ConvertLine(){
  }else{
   switch(Line[0]){
    case 'T':
-    Tool = GetTool(&ToolChars);
+    Tool = GetTool(&CharCount);
     if(Tool > 0) fprintf(Output, "D%02d*\n", Tool+10);
     break;
 
    case 'X':
    case 'Y':
-    for(Tool = 0; Line[Tool]; Tool++){
-     if(Line[Tool] != '+') fprintf(Output, "%c", Line[Tool]);
+    j = 0;
+    while(Line[j]){
+     switch(Line[j]){
+      case 'X':
+      case 'Y':
+      case '-': fprintf(Output, "%c", Line[j++]); break;
+      case '+': j++;                              break;
+      default : j += ConvertCoord(j);             break;
+     }
     }
     fprintf(Output, "D03*\n");
     break;
@@ -162,6 +264,7 @@ int main(int argc, char** argv){
    "\n"
    "Tested on drill files from:\n"
    "- PCAD\n"
+   "- KiCad\n"
    "- FreePCB\n"
    "- Microchip\n"
    "- Mentor Graphics\n"
