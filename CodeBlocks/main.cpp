@@ -117,12 +117,13 @@ int ConvertCoord(int Index){
  // Output is always with trailing zeros
  fprintf(Output, "%d", Value);
 
- if(!j){ // Prevent infinite loop
+ j -= Index;
+ if(j == 0){ // Prevent infinite loop
   printf("\nError while converting coordinate\n\n");
   RecognisedFormat = false;
   j++;
  }
- return j - Index;
+ return j;
 }
 //------------------------------------------------------------------------------
 
