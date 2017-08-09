@@ -34,6 +34,17 @@ int  IntDigits        = 3;
 int  FractionDigits   = 3;
 bool LeadingZeros     = true;
 bool RecognisedFormat = false;
+
+enum MODE{
+ Mode_Drill        = 0,
+ Mode_Route_Move   = 1,
+ Mode_Route_Linear = 2
+} Mode = Mode_Drill;
+
+enum Z_AXIS{
+  Z_Routing,
+  Z_Retracted
+} Z_Axis = Z_Retracted;
 //------------------------------------------------------------------------------
 
 #endif

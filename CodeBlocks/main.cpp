@@ -145,10 +145,30 @@ void GetFormat(int Index){
 }
 //------------------------------------------------------------------------------
 
+void DoCoord(int Index){
+ while(Line[Index]){
+  switch(Line[Index]){
+   case 'X':
+   case 'Y':
+   case '-': fprintf(Output, "%c", Line[Index++]); break;
+   case '+': Index++;                              break;
+   default : Index += ConvertCoord(Index);         break;
+  }
+ }
+
+ if(Mode == Mode_Drill){
+  fprintf(Output, "D03*\n");
+
+ }else{
+  if(Z_Axis == Z_Routing) fprintf(Output, "D01*\n");
+  else                    fprintf(Output, "D02*\n");
+ }
+}
+//------------------------------------------------------------------------------
+
 void ConvertLine(){
  static bool Header = true;
 
- int j;
  int Tool;
  int CharCount;
 
@@ -214,23 +234,46 @@ void ConvertLine(){
 
    case 'X':
    case 'Y':
-    j = 0;
-    while(Line[j]){
-     switch(Line[j]){
-      case 'X':
-      case 'Y':
-      case '-': fprintf(Output, "%c", Line[j++]); break;
-      case '+': j++;                              break;
-      default : j += ConvertCoord(j);             break;
-     }
-    }
-    fprintf(Output, "D03*\n");
+    DoCoord(0);
     break;
 
    case 'M':
     if     (IsLine("M48")) Header = true;
     else if(IsLine("M30")) fprintf(Output, "M02*\n");
+    else if(IsLine("M15")) Z_Axis = Z_Routing;
+    else if(IsLine("M16")) Z_Axis = Z_Retracted;
+    else if(IsLine("M17")) Z_Axis = Z_Retracted;
     break;
+
+   case 'G':
+    if(
+      (Line[1] == '0' && Line[2] == '5') |
+      (Line[1] == '8' && Line[2] == '1')
+    ){
+      Z_Axis = Z_Retracted;
+      Mode   = Mode_Drill;
+
+    }else if(Line[1] == '0' && Line[2] == '0'){
+      Mode = Mode_Route_Move;
+      DoCoord(3);
+
+    }else if(Line[1] == '0' && Line[2] == '1'){
+      Mode = Mode_Route_Linear;
+      DoCoord(3);
+
+    }else if(Line[1] == '9' && Line[2] == '0'){
+    }else if(Line[1] == '9' && Line[2] == '3'){
+     printf("Warning: Zero-set command (G93) ignored\n");
+
+    }else{
+      printf(
+       "Warning: Unsupported code: G%c%c\\n"
+       "\n"
+       "Please post a comment, with an example drill file, on\n"
+       "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n",
+       Line[1], Line[2]
+      );
+    }
 
    default:
     break;
@@ -242,7 +285,7 @@ void ConvertLine(){
 int main(int argc, char** argv){
  if(argc < 2){
   printf(
-   "Drill2Gerber, Version 1.0\n"
+   "Drill2Gerber, Version 1.1\n"
    "Built on "__DATE__" at "__TIME__"\n"
    "\n"
    "Copyright (C) John-Philip Taylor\n"
