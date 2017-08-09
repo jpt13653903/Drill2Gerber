@@ -13,6 +13,11 @@ This will display the copyright and usage information.
 
 ## Changes:
 
+#### 2017-08-09
+
+- Bumped the version to 1.1
+- Added linear routing support
+
 #### 2016-12-15
 
 - Generalised the coordinate format
