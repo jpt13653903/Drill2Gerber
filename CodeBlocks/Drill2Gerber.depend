@@ -5,9 +5,10 @@
 1403383178 w:\projects\14\1419 - drill2gerber\codeblocks\main.h
 	<stdio.h>
 
-1502275223 source:c:\jpt\projects\14\1419 - drill2gerber\codeblocks\main.cpp
+1503144308 source:c:\jpt\projects\14\1419 - drill2gerber\codeblocks\main.cpp
 	"main.h"
 
-1502275111 c:\jpt\projects\14\1419 - drill2gerber\codeblocks\main.h
+1503143145 c:\jpt\projects\14\1419 - drill2gerber\codeblocks\main.h
+	<math.h>
 	<stdio.h>
 

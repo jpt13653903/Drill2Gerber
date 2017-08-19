@@ -76,14 +76,22 @@ The drill file format supports a maximum of 6 digits:
 https://web.archive.org/web/20071030075236/http://www.excellon.com/
   manuals/program.htm                                                         */
 
-int ConvertCoord(int Index){
+int ConvertCoord(int Index, int* ValueOut){
  int  Value         = 0;
  int  Digits        = 0;
  int  PointPos      = 0;
+ bool Sign          = false;
  bool ExplicitPoint = false;
 
- int j;
- for(j = Index; Line[j]; j++){
+ int j = Index;
+ if(Line[j] == '+'){
+  j++;
+ }else if(Line[j] == '-'){
+  Sign = true;
+  j++;
+ }
+
+ while(Line[j]){
   if(Line[j] >= '0' && Line[j] <= '9'){
    Value = 10*Value + Line[j] - '0';
    Digits  ++;
@@ -96,6 +104,7 @@ int ConvertCoord(int Index){
   }else{
    break;
   }
+  j++;
  }
 
  // Get the real value (scaled with 10^FractionDigits)
@@ -114,15 +123,15 @@ int ConvertCoord(int Index){
   }
  }
 
- // Output is always with trailing zeros
- fprintf(Output, "%d", Value);
-
  j -= Index;
  if(j == 0){ // Prevent infinite loop
   printf("\nError while converting coordinate\n\n");
   RecognisedFormat = false;
   j++;
  }
+
+ // Output is always with trailing zeros
+ *ValueOut = Sign ? -Value : Value;
  return j;
 }
 //------------------------------------------------------------------------------
@@ -145,24 +154,132 @@ void GetFormat(int Index){
 }
 //------------------------------------------------------------------------------
 
+// Arcs are guaranteed to be less than 180 deg
+void DoArc(double pX, double pY, double X, double Y, double R, bool CCW){
+ double x = X - pX;
+ double y = Y - pY;
+
+ double e = CCW ? 1 : -1;
+ double d = x*x + y*y;
+ double h = R*R - d/4.0;
+
+ if(h <= 0.0){ // Invalid radius
+  x = (X - pX)/2.0;
+  y = (Y - pY)/2.0;
+
+ }else{
+  d = sqrt(d);
+  h = sqrt(h);
+
+  x = (X - pX)/2.0 - e * h * ((Y - pY) / d);
+  y = (Y - pY)/2.0 + e * h * ((X - pX) / d);
+ }
+
+ fprintf(Output,
+  "X%dY%dI%dJ%dD01*\n",
+  (int)round(X), (int)round(Y),
+  (int)round(x), (int)round(y)
+ );
+}
+//------------------------------------------------------------------------------
+
 void DoCoord(int Index){
+ // These are used for circular routing
+ static int pX = 0, pY = 0, X = 0, Y = 0, I = 0, J = 0, R = 0;
+
+ // Used to detect if this sets arc parameters, or includes a routing command
+ bool ParameterOnly = false;
+
  while(Line[Index]){
   switch(Line[Index]){
    case 'X':
+    ParameterOnly = false;
+    Index ++;
+    Index += ConvertCoord(Index, &X);
+    break;
+
    case 'Y':
-   case '-': fprintf(Output, "%c", Line[Index++]); break;
-   case '+': Index++;                              break;
-   default : Index += ConvertCoord(Index);         break;
+    ParameterOnly = false;
+    Index ++;
+    Index += ConvertCoord(Index, &Y);
+    break;
+
+   case 'I':
+    if(Index == 0) ParameterOnly = true;
+    Index ++;
+    Index += ConvertCoord(Index, &I);
+    R = round(sqrt((double)I*(double)I + (double)J*(double)J));
+    break;
+
+   case 'J':
+    if(Index == 0) ParameterOnly = true;
+    Index ++;
+    Index += ConvertCoord(Index, &J);
+    R = round(sqrt((double)I*(double)I + (double)J*(double)J));
+    break;
+
+   case 'A':
+    if(Index == 0) ParameterOnly = true;
+    Index ++;
+    Index += ConvertCoord(Index, &R);
+    break;
+
+   default:
+    break;
   }
  }
 
- if(Mode == Mode_Drill){
-  fprintf(Output, "D03*\n");
-
- }else{
-  if(Z_Axis == Z_Routing) fprintf(Output, "D01*\n");
-  else                    fprintf(Output, "D02*\n");
+ if(ParameterOnly){
+  pX = X;
+  pY = Y;
+  return;
  }
+
+ switch(Mode){
+  case Mode_Drill:
+   if(pX != X) fprintf(Output, "X%d", X);
+   if(pY != Y) fprintf(Output, "Y%d", Y);
+   fprintf(Output, "D03*\n");
+   break;
+
+  case Mode_Route_Canned_CW:
+  case Mode_Route_Canned_CCW:
+   fprintf(Output, "X%dY%dD02*\n", X+R, Y);
+   fprintf(Output, "I%dJ0D01*\n" ,  -R   );
+   fprintf(Output, "X%dY%dD02*\n", X  , Y);
+   break;
+
+  default:
+   if(Z_Axis == Z_Routing){
+    switch(Mode){
+     case Mode_Route_Move:
+     case Mode_Route_Linear:
+      if(pX != X) fprintf(Output, "X%d", X);
+      if(pY != Y) fprintf(Output, "Y%d", Y);
+      fprintf(Output, "D01*\n");
+      break;
+
+     case Mode_Route_CW:
+      DoArc(pX, pY, X, Y, R, false);
+      break;
+
+     case Mode_Route_CCW:
+      DoArc(pX, pY, X, Y, R, true);
+      break;
+
+     default:
+      break;
+    }
+   }else{ // Move only
+    if(pX != X) fprintf(Output, "X%d", X);
+    if(pY != Y) fprintf(Output, "Y%d", Y);
+    fprintf(Output, "D02*\n");
+   }
+   break;
+ }
+
+ pX = X;
+ pY = Y;
 }
 //------------------------------------------------------------------------------
 
@@ -234,6 +351,9 @@ void ConvertLine(){
 
    case 'X':
    case 'Y':
+   case 'I':
+   case 'J':
+   case 'A':
     DoCoord(0);
     break;
 
@@ -252,6 +372,7 @@ void ConvertLine(){
     ){
       Z_Axis = Z_Retracted;
       Mode   = Mode_Drill;
+      fprintf(Output, "G01*\n");
 
     }else if(Line[1] == '0' && Line[2] == '0'){
       Mode = Mode_Route_Move;
@@ -259,6 +380,27 @@ void ConvertLine(){
 
     }else if(Line[1] == '0' && Line[2] == '1'){
       Mode = Mode_Route_Linear;
+      fprintf(Output, "G01*\n");
+      DoCoord(3);
+
+    }else if(Line[1] == '0' && Line[2] == '2'){
+      Mode = Mode_Route_CW;
+      fprintf(Output, "G02*\nG75*\n");
+      DoCoord(3);
+
+    }else if(Line[1] == '0' && Line[2] == '3'){
+      Mode = Mode_Route_CCW;
+      fprintf(Output, "G03*\nG75*\n");
+      DoCoord(3);
+
+    }else if(Line[1] == '3' && Line[2] == '2'){
+      Mode = Mode_Route_Canned_CW;
+      fprintf(Output, "G02*\nG75*\n");
+      DoCoord(3);
+
+    }else if(Line[1] == '3' && Line[2] == '3'){
+      Mode = Mode_Route_Canned_CCW;
+      fprintf(Output, "G03*\nG75*\n");
       DoCoord(3);
 
     }else if(Line[1] == '9' && Line[2] == '0'){
