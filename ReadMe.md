@@ -11,6 +11,10 @@ Mentor Graphics and Autodesk Circuits.
 Download and run Drill2Gerber.exe.
 This will display the copyright and usage information.
 
+## Source:
+
+The source is available from the [git repository](https://sourceforge.net/p/gerber2pdf/drillcode) and [GitHub](https://github.com/jpt13653903/Drill2Gerber).
+
 ## Changes:
 
 #### 2017-08-19
@@ -36,9 +40,4 @@ This will display the copyright and usage information.
 
 - Removed pause upon successful conversion
 - Fixed bug for Mentor Graphics produced drill files.
-
-## Source:
-
-The source is available from the git repository:
-[https://sourceforge.net/p/gerber2pdf/drillcode](https://sourceforge.net/p/gerber2pdf/drillcode)
 
