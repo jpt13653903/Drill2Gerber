@@ -8,7 +8,7 @@ Mentor Graphics and Autodesk Circuits.
 
 ## Installation:
 
-Download and run Drill2Gerber.exe.
+Download and run [Drill2Gerber.exe](https://sourceforge.net/projects/gerber2pdf/files/Drill2Gerber/Drill2Gerber.exe/download).
 This will display the copyright and usage information.
 
 ## Source:
