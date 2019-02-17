@@ -19,7 +19,8 @@ The source is available from the [git repository](https://sourceforge.net/p/gerb
 
 #### 2019-02-17
 
-- Fixed tool definitions to support drill files that includes feed-rate and other information.
+- Fixed tool definitions to support drill files that include feed-rate and other information.
+- Added support for the `;FILE_FORMAT=2:5` comment, which is non-standard, but used by Altium Designer.
 
 #### 2017-08-19
 

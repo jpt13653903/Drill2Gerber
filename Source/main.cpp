@@ -309,7 +309,8 @@ const char* GetToolDiameter(const char* s){
 //------------------------------------------------------------------------------
 
 void ConvertLine(){
- static bool Header = true;
+ static bool Header    = true;
+ static bool Format_25 = false;
 
  int Tool;
  int CharCount;
@@ -322,6 +323,8 @@ void ConvertLine(){
      FractionDigits   = 4;
      LeadingZeros     = true;
      RecognisedFormat = true;
+
+     if(Format_25) FractionDigits = 5;
 
      if     (Line[5] == 'T') LeadingZeros = false;
      if     (Line[5] == '0') GetFormat(5);
@@ -363,6 +366,10 @@ void ConvertLine(){
     Header = false;
     fprintf(Output, "%%LPD*%%\nG01*\n");
     break;
+
+   case ';':
+     if(!strncmp(Line+1, "FILE_FORMAT=2:5", 15)) Format_25 = true;
+     break;
 
    default:
     break;
