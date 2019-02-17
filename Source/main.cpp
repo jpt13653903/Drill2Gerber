@@ -283,6 +283,31 @@ void DoCoord(int Index){
 }
 //------------------------------------------------------------------------------
 
+const char* GetToolDiameter(const char* s){
+  static char Result[0x100];
+
+  int n, r;
+
+  Result[0] = 0;
+
+  n = 0;
+  while(s[n]){
+    if(s[n] == 'C'){
+      n++;
+      break;
+    }
+    n++;
+  }
+  r = 0;
+  while(s[n] && r < 0xFF){
+    if((s[n] >= '0' && s[n] <= '9') || s[n] == '.') Result[r++] = s[n++];
+    else break;
+  }
+  Result[r] = 0;
+  return Result;
+}
+//------------------------------------------------------------------------------
+
 void ConvertLine(){
  static bool Header = true;
 
@@ -331,7 +356,7 @@ void ConvertLine(){
 
    case 'T': // Define drill width
     Tool = GetTool(&CharCount);
-    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, Line+CharCount+2);
+    fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, GetToolDiameter(Line+CharCount));
     break;
 
    case '%':
@@ -428,7 +453,7 @@ int main(int argc, char** argv){
  if(argc < 2){
   printf(
    "Drill2Gerber, Version 1.1\n"
-   "Built on "__DATE__" at "__TIME__"\n"
+   "Built on " __DATE__ " at " __TIME__ "\n"
    "\n"
    "Copyright (C) John-Philip Taylor\n"
    "jpt13653903@gmail.com\n"
@@ -449,12 +474,13 @@ int main(int argc, char** argv){
    "Usage: Drill2Gerber input_file\n"
    "\n"
    "Tested on drill files from:\n"
-   "- PCAD\n"
-   "- KiCad\n"
-   "- FreePCB\n"
-   "- Microchip\n"
-   "- Mentor Graphics\n"
+   "- Altium Designer\n"
    "- Autodesk Circuits\n"
+   "- FreePCB\n"
+   "- KiCad\n"
+   "- Mentor Graphics\n"
+   "- Microchip\n"
+   "- PCAD\n"
   );
   Pause();
   return 0;
