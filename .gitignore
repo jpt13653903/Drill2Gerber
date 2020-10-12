@@ -6,7 +6,5 @@
 
 *.txt
 
-CodeBlocks/bin/*
-CodeBlocks/obj/*
 Issues/*
 

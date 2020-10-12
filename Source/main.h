@@ -38,13 +38,13 @@ bool LeadingZeros     = true;
 bool RecognisedFormat = false;
 
 enum MODE{
- Mode_Drill,
- Mode_Route_Move,
- Mode_Route_Linear,
- Mode_Route_CW,
- Mode_Route_CCW,
- Mode_Route_Canned_CW,
- Mode_Route_Canned_CCW,
+  Mode_Drill,
+  Mode_Route_Move,
+  Mode_Route_Linear,
+  Mode_Route_CW,
+  Mode_Route_CCW,
+  Mode_Route_Canned_CW,
+  Mode_Route_Canned_CCW,
 } Mode = Mode_Drill;
 
 enum Z_AXIS{
