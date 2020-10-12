@@ -537,6 +537,7 @@ int main(int argc, char** argv){
       "Please post a comment, with an example drill file, on\n"
       "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n"
     );
+    return 3;
 
   }else{
     printf("Drill to Gerber conversion successful\n");

@@ -17,6 +17,10 @@ The source is available from the [git repository](https://sourceforge.net/p/gerb
 
 ## Changes:
 
+#### 2020-10-12
+
+- Now returns "3" when the format is not specified in the drill file header.
+
 #### 2019-02-17
 
 - Fixed tool definitions to support drill files that include feed-rate and other information.
