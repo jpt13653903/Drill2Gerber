@@ -1,12 +1,12 @@
-.PHONY: clean all Release
+.PHONY: clean all release
 
 all:
-	make -C Source all
+	$(MAKE) -C Source all
 
 clean:
-	make -C Source clean
+	$(MAKE) -C Source clean
 
-Release: all
+release: all
 	scp ReadMe.md Source/bin/* jptaylor@frs.sourceforge.net:/home/frs/project/gerber2pdf/Drill2Gerber/
 #-------------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
-CC      = g++
-Options = -std=c++11 -Wall -fexceptions
+CXX     = g++
+Options = -std=c++11 -Wall -fexceptions -O2
 
 ifeq ($(OS), Windows_NT)
   # Options += -municode
@@ -40,18 +40,18 @@ clean:
 
 bin/Drill2Gerber: main.cpp main.h
 	mkdir -p bin
-	$(CC) $(Options) $(Version) $(Includes) $< -s -o $@
+	$(CXX) $(Options) $(Version) $(Includes) $< -s -o $@
 
 bin/Drill2Gerber.exe: main.cpp main.h $(Resources)
 	mkdir -p bin
-	$(CC) $(Options) $(Version) $(Includes) $< -s $(Resources) -o $@
+	$(CXX) $(Options) $(Version) $(Includes) $< -s $(Resources) -o $@
 #-------------------------------------------------------------------------------
 
 # Objects
 
 obj/%.o: %.cpp $(Headers)
 	mkdir -p $(@D)
-	$(CC) $(Options) $(Version) $(Defines) -c $(Includes) $< -o $@
+	$(CXX) $(Options) $(Version) $(Defines) -c $(Includes) $< -o $@
 #-------------------------------------------------------------------------------
 
 # Resources
