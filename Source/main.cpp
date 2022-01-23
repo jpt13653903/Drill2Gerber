@@ -126,7 +126,7 @@ int ConvertCoord(int Index, int* ValueOut){
   j -= Index;
   if(j == 0){ // Prevent infinite loop
     printf("\nError while converting coordinate\n\n");
-    RecognisedFormat = false;
+    Error = true;
     j++;
   }
 
@@ -224,7 +224,27 @@ void DoCoord(int Index){
         Index += ConvertCoord(Index, &R);
         break;
 
+      case 'G':
+        if(Line[Index+1] == '8' && Line[Index+2] == '5'){
+          if(pX != X) fprintf(Output, "X%d", X);
+          if(pY != Y) fprintf(Output, "Y%d", Y);
+          fprintf(Output, "D02*\n");
+          pX = X;
+          pY = Y;
+
+          Z_Axis = Z_Routing;
+          Mode   = Mode_Route_Linear;
+          DoCoord(Index+3);
+          Z_Axis = Z_Retracted;
+          Mode   = Mode_Drill;
+        }else{
+          printf("\nInvalid embedded G-command\n\n");
+          Error = true;
+        }
+        return;
+
       default:
+        Line[Index] = 0;
         break;
     }
   }
@@ -459,7 +479,7 @@ void ConvertLine(){
 int main(int argc, char** argv){
   if(argc < 2){
     printf(
-      "Drill2Gerber, Version 1.1\n"
+      "Drill2Gerber, Version %d.%d\n"
       "Built on " __DATE__ " at " __TIME__ "\n"
       "\n"
       "Copyright (C) John-Philip Taylor\n"
@@ -487,7 +507,9 @@ int main(int argc, char** argv){
       "- KiCad\n"
       "- Mentor Graphics\n"
       "- Microchip\n"
-      "- PCAD\n"
+      "- PCAD\n",
+      MAJOR_VERSION,
+      MINOR_VERSION
     );
     Pause();
     return 0;
@@ -531,12 +553,13 @@ int main(int argc, char** argv){
   delete[] OutputFile;
 
   if(!RecognisedFormat){
-    printf(
-      "Error: Unrecognised drill coordinate format\n"
-      "\n"
-      "Please post a comment, with an example drill file, on\n"
-      "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n"
-    );
+    printf("\nError: Unrecognised drill coordinate format\n\n");
+    Error = true;
+  }
+
+  if(Error){
+    printf("Please post a comment, with an example drill file, on\n"
+           "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n");
     return 3;
 
   }else{

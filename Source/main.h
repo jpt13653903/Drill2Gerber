@@ -27,6 +27,8 @@
 #include <string.h>
 //------------------------------------------------------------------------------
 
+bool  Error = false;
+
 FILE* Input;
 FILE* Output;
 
