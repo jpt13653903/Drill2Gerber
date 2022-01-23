@@ -20,6 +20,7 @@ The source is available from the [git repository](https://sourceforge.net/p/gerb
 #### 2022-01-23
 
 - Added support for G85 codes (used to route lines)
+- Added support for Repeat Hole commands
 - Added support for extracting tool sizes from the comments
 
 #### 2020-10-12

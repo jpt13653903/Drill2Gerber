@@ -42,13 +42,14 @@ bool ReadLine(){
     if(c != '\r') Line[j++] = c;
     c = fgetc(Input);
   }
+  Line[j] = 0;
   return true;
 }
 //------------------------------------------------------------------------------
 
 bool IsLine(const char* String){
   int j;
-  for(j = 0; Line[0] && String[j]; j++){
+  for(j = 0; Line[j] && String[j]; j++){
     if(Line[j] != String[j]) return false;
   }
   if(String[j]       ) return false; // Still characters left
@@ -57,15 +58,28 @@ bool IsLine(const char* String){
 }
 //------------------------------------------------------------------------------
 
-int GetTool(int* ToolChars){
+bool Keyword(int* Index, const char* String){
+  int j;
+
+  for(j = 0; Line[*Index+j] && String[j]; j++){
+    if(Line[*Index+j] != String[j]) return false;
+  }
+  if(String[j]) return false; // Still characters left
+
+  *Index += j;
+  return true;
+}
+//------------------------------------------------------------------------------
+
+int GetTool(int* ToolChars, int Index = 1){
   int j;
   int Tool = 0;
 
-  for(j = 1; Line[j] >= '0' && Line[j] <= '9'; j++){
+  for(j = Index; Line[j] >= '0' && Line[j] <= '9'; j++){
     Tool = 10*Tool + Line[j] - '0';
   }
 
-  *ToolChars = j-1;
+  *ToolChars = j-Index;
   return Tool;
 }
 //------------------------------------------------------------------------------
@@ -185,10 +199,15 @@ void DoArc(double pX, double pY, double X, double Y, double R, bool CCW){
 
 void DoCoord(int Index){
   // These are used for circular routing
-  static int pX = 0, pY = 0, X = 0, Y = 0, I = 0, J = 0, R = 0;
+  static int X = 0, Y = 0, I = 0, J = 0, R = 0;
 
   // Used to detect if this sets arc parameters, or includes a routing command
   bool ParameterOnly = false;
+
+  if(!ToolSelected){
+    fprintf(Output, "D%02d*\n", Tool+10);
+    ToolSelected = true;
+  }
 
   while(Line[Index]){
     switch(Line[Index]){
@@ -328,11 +347,148 @@ const char* GetToolDiameter(const char* s){
 }
 //------------------------------------------------------------------------------
 
-void ConvertLine(){
-  static bool Header    = true;
-  static bool Format_25 = false;
+void DoRepeat(){
+  int dX = 0, dY = 0;
+  int Count = 0;
+  int Index = 0;
 
-  int Tool;
+  if(!ToolSelected){
+    fprintf(Output, "D%02d*\n", Tool+10);
+    ToolSelected = true;
+  }
+
+  while(Line[Index]){
+    switch(Line[Index]){
+      case 'X':
+        Index ++;
+        Index += ConvertCoord(Index, &dX);
+        break;
+
+      case 'Y':
+        Index ++;
+        Index += ConvertCoord(Index, &dY);
+        break;
+
+      case 'R':
+        Index ++;
+        while(Line[Index] >= '0' && Line[Index] <= '9'){
+          Count *= 10;
+          Count += Line[Index++] - '0';
+        }
+        break;
+
+      default:
+        Line[Index] = 0;
+        break;
+    }
+  }
+
+  int X = pX, Y = pY;
+  for(int n = 0; n < Count; n++){
+    X += dX;
+    Y += dY;
+    if(pX != X) fprintf(Output, "X%d", X);
+    if(pY != Y) fprintf(Output, "Y%d", Y);
+    fprintf(Output, "D03*\n");
+    pX = X;
+    pY = Y;
+  }
+}
+//------------------------------------------------------------------------------
+
+int WhiteSpace(int Index){
+  while(Line[Index] == ' ') Index++;
+  return Index;
+}
+//------------------------------------------------------------------------------
+
+void GetHolesize(int Index){
+  int CharCount;
+
+  Index = WhiteSpace(Index);
+
+  int Tool = GetTool(&CharCount, Index);
+  Index += CharCount;
+
+  if(MaxTool < Tool) MaxTool = Tool;
+  // printf("Tool = %d\n", Tool);
+
+  while(Line[Index] && (Line[Index] < '0' || Line[Index] > '9')) Index++;
+  int SizeStart = Index;
+  while((Line[Index] && Line[Index] >= '0' && Line[Index] <= '9') || Line[Index] == '.') Index++;
+  int SizeStop = Index;
+
+  // printf("Size = '");
+  // for(int n = SizeStart; n <= SizeStop; n++) printf("%c", Line[n]);
+  // printf("'\n");
+
+  if(SizeStart == SizeStop) return;
+
+  while(Line[Index]){
+    if(Keyword(&Index, "PLATED") || Keyword(&Index, "NON_PLATED")) break;
+    Index++;
+  }
+
+  Index = WhiteSpace(Index);
+
+  bool isMetric = false;
+  if(Keyword(&Index, "MM")){
+    isMetric = true;
+
+  }else if(Keyword(&Index, "MILS")){
+    isMetric = false;
+
+  }else{
+    return;
+  }
+
+  if(!RecognisedFormat){
+    if(isMetric){
+      printf("\nWarning: Hole size specified in header, but the coordinate\n"
+             "         format is not yet specified.  Assuming metric 5.5\n\n");
+      IntDigits      = 5;
+      FractionDigits = 5;
+      fprintf(Output,
+        "%%FSLAX%d%dY%d%d*MOMM*%%\n",
+        IntDigits, FractionDigits,
+        IntDigits, FractionDigits
+      );
+    }else{
+      printf("\nWarning: Hole size specified in header, but the coordinate\n"
+             "         format is not yet specified.  Assuming inch 2.4\n\n");
+      IntDigits      = 2;
+      FractionDigits = 4;
+      fprintf(Output,
+        "%%FSLAX%d%dY%d%d*MOIN*%%\n",
+        IntDigits, FractionDigits,
+        IntDigits, FractionDigits
+      );
+    }
+    RecognisedFormat = true;
+  }
+
+  fprintf(Output, "%%ADD%02dC,", Tool+10);
+  for(int n = SizeStart; n <= SizeStop; n++) fprintf(Output, "%c", Line[n]);
+  fprintf(Output, "*%%\n");
+}
+//------------------------------------------------------------------------------
+
+void ParseComment(){
+  int Index = 1;
+
+  Index = WhiteSpace(Index);
+  if(Keyword(&Index, "FILE_FORMAT")){
+    if(!strncmp(Line+Index, "=2:5", 15)) Format_25 = true;
+
+  }else if(Keyword(&Index, "Holesize")){
+    GetHolesize(Index);
+  }
+}
+//------------------------------------------------------------------------------
+
+void ConvertLine(){
+  static bool Header = true;
+
   int CharCount;
 
   if(Header){
@@ -380,15 +536,17 @@ void ConvertLine(){
       case 'T': // Define drill width
         Tool = GetTool(&CharCount);
         fprintf(Output, "%%ADD%02dC,%s*%%\n", Tool+10, GetToolDiameter(Line+CharCount));
+        if(MaxTool < Tool) MaxTool = Tool;
         break;
 
       case '%':
+        Tool   = 1;
         Header = false;
         fprintf(Output, "%%LPD*%%\nG01*\n");
         break;
 
       case ';':
-        if(!strncmp(Line+1, "FILE_FORMAT=2:5", 15)) Format_25 = true;
+        ParseComment();
         break;
 
       default:
@@ -398,7 +556,8 @@ void ConvertLine(){
     switch(Line[0]){
       case 'T':
         Tool = GetTool(&CharCount);
-        if(Tool > 0) fprintf(Output, "D%02d*\n", Tool+10);
+        if(Tool > 0 && Tool <= MaxTool) fprintf(Output, "D%02d*\n", Tool+10);
+        ToolSelected = true;
         break;
 
       case 'X':
@@ -409,12 +568,21 @@ void ConvertLine(){
         DoCoord(0);
         break;
 
+      case 'R':
+        DoRepeat();
+        break;
+
       case 'M':
         if     (IsLine("M48")) Header = true;
         else if(IsLine("M30")) fprintf(Output, "M02*\n");
         else if(IsLine("M15")) Z_Axis = Z_Routing;
         else if(IsLine("M16")) Z_Axis = Z_Retracted;
         else if(IsLine("M17")) Z_Axis = Z_Retracted;
+        else if(IsLine("M00")){
+          Tool++;
+          if(Tool > 0 && Tool <= MaxTool) fprintf(Output, "D%02d*\n", Tool+10);
+          ToolSelected = true;
+        }
         break;
 
       case 'G':

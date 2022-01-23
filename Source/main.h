@@ -34,10 +34,17 @@ FILE* Output;
 
 char* Line;
 
+bool Format_25        = false;
 int  IntDigits        = 3;
 int  FractionDigits   = 3;
 bool LeadingZeros     = true;
 bool RecognisedFormat = false;
+
+int  Tool    = 0;
+int  MaxTool = 0;
+bool ToolSelected = false;
+
+int pX = 0, pY = 0;
 
 enum MODE{
   Mode_Drill,
