@@ -21,6 +21,14 @@
 #include "main.h"
 //------------------------------------------------------------------------------
 
+static const char* BugReportString =
+  "Please post a comment, with an example drill file, on\n"
+  "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n"
+  "\n"
+  "Alternatively, open an issue on\n"
+  "https://github.com/jpt13653903/Drill2Gerber/issues\n";
+//------------------------------------------------------------------------------
+
 void Pause(){
   printf("\nPress Enter to continue\n");
   getchar();
@@ -630,10 +638,9 @@ void ConvertLine(){
         }else{
           printf(
             "Warning: Unsupported code: G%c%c\\n"
-            "\n"
-            "Please post a comment, with an example drill file, on\n"
-            "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n",
-            Line[1], Line[2]
+            "\n%s",
+            Line[1], Line[2],
+            BugReportString
           );
         }
 
@@ -726,8 +733,7 @@ int main(int argc, char** argv){
   }
 
   if(Error){
-    printf("Please post a comment, with an example drill file, on\n"
-           "https://sourceforge.net/p/gerber2pdf/discussion/bugs/\n");
+    printf(BugReportString);
     return 3;
 
   }else{
